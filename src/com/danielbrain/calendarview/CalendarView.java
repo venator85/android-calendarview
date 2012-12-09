@@ -1,11 +1,13 @@
 package com.danielbrain.calendarview;
 
 import java.util.Calendar;
+import java.util.Iterator;
 import java.util.Locale;
 
 import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.LayoutInflater;
@@ -37,12 +39,13 @@ public class CalendarView extends Fragment {
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-		final RelativeLayout calendarLayout = (RelativeLayout)inflater.inflate(R.layout.calendar, null);
-		final GridView calendarDayGrid = (GridView)calendarLayout.findViewById(R.id.calendar_days_grid);
+		final RelativeLayout calendarLayout = (RelativeLayout) inflater.inflate(R.layout.calendar, null);
+		final GridView calendarDayGrid = (GridView) calendarLayout.findViewById(R.id.calendar_days_grid);
 		final GestureDetector swipeDetector = new GestureDetector(getActivity(), new SwipeGesture(getActivity()));
-		final GridView calendarGrid = (GridView)calendarLayout.findViewById(R.id.calendar_grid);
-		calendarSwitcher = (ViewSwitcher)calendarLayout.findViewById(R.id.calendar_switcher);
-		currentMonth = (TextView)calendarLayout.findViewById(R.id.current_month);
+		final GridView calendarGrid = (GridView) calendarLayout.findViewById(R.id.calendar_grid);
+		calendarSwitcher = (ViewSwitcher) calendarLayout.findViewById(R.id.calendar_switcher);
+		currentMonth = (TextView) calendarLayout.findViewById(R.id.current_month);
+
 		calendarAdapter = new CalendarAdapter(getActivity(), calendar);
 		updateCurrentMonth();
 
@@ -60,6 +63,21 @@ public class CalendarView extends Fragment {
 			}
 		});
 		calendarDayGrid.setAdapter(new ArrayAdapter<String>(getActivity(), R.layout.day_item, getResources().getStringArray(R.array.days_array)));
+
+		//XXX for debugging only
+		currentMonth.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				Log.e("", "==========");
+				Iterator<CalendarItem> selectedDaysIterator = calendarAdapter.getSelectedDaysIterator();
+				while (selectedDaysIterator.hasNext()) {
+					CalendarItem item = selectedDaysIterator.next();
+					Log.e("", item.toString());
+				}
+				Log.e("", "==========");
+			}
+		});
+
 		return calendarLayout;
 	}
 
@@ -71,11 +89,8 @@ public class CalendarView extends Fragment {
 	private final class DayItemClickListener implements OnItemClickListener {
 		@Override
 		public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-			final TextView dayView = (TextView)view.findViewById(R.id.date);
-			final CharSequence text = dayView.getText();
-			if (text != null && !"".equals(text)) {
-				calendarAdapter.setSelected(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), Integer.valueOf(String.valueOf(text)));
-			}
+			CalendarItem item = (CalendarItem) view.getTag();
+			calendarAdapter.toggleSelected(item);
 		}
 	}
 
@@ -83,11 +98,7 @@ public class CalendarView extends Fragment {
 		calendarSwitcher.setInAnimation(getActivity(), R.anim.in_from_right);
 		calendarSwitcher.setOutAnimation(getActivity(), R.anim.out_to_left);
 		calendarSwitcher.showNext();
-		if (calendar.get(Calendar.MONTH) == Calendar.DECEMBER) {
-			calendar.set((calendar.get(Calendar.YEAR) + 1), Calendar.JANUARY, 1);
-		} else {
-			calendar.set(Calendar.MONTH, calendar.get(Calendar.MONTH) + 1);
-		}
+		calendar.add(Calendar.MONTH, 1);
 		updateCurrentMonth();
 	}
 
@@ -95,11 +106,7 @@ public class CalendarView extends Fragment {
 		calendarSwitcher.setInAnimation(getActivity(), R.anim.in_from_left);
 		calendarSwitcher.setOutAnimation(getActivity(), R.anim.out_to_right);
 		calendarSwitcher.showPrevious();
-		if (calendar.get(Calendar.MONTH) == Calendar.JANUARY) {
-			calendar.set((calendar.get(Calendar.YEAR) - 1), Calendar.DECEMBER, 1);
-		} else {
-			calendar.set(Calendar.MONTH, calendar.get(Calendar.MONTH)-1);
-		}
+		calendar.add(Calendar.MONTH, -1);
 		updateCurrentMonth();
 	}
 
@@ -129,12 +136,12 @@ public class CalendarView extends Fragment {
 
 		@Override
 		public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-	        if (e1.getX() - e2.getX() > swipeMinDistance && Math.abs(velocityX) > swipeThresholdVelocity) {
-	            onNextMonth();
-	        }  else if (e2.getX() - e1.getX() > swipeMinDistance && Math.abs(velocityX) > swipeThresholdVelocity) {
-	            onPreviousMonth();
-	        }
-	        return false;
+			if (e1.getX() - e2.getX() > swipeMinDistance && Math.abs(velocityX) > swipeThresholdVelocity) {
+				onNextMonth();
+			} else if (e2.getX() - e1.getX() > swipeMinDistance && Math.abs(velocityX) > swipeThresholdVelocity) {
+				onPreviousMonth();
+			}
+			return false;
 		}
 	}
 
